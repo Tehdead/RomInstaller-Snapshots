@@ -1,0 +1,28 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<OutputType>WinExe</OutputType>
+		<TargetFramework>net8.0-windows</TargetFramework>
+		<LangVersion>latest</LangVersion>
+		<Nullable>enable</Nullable>
+		<ImplicitUsings>enable</ImplicitUsings>
+		<UseWPF>true</UseWPF>
+		<EnableWindowsTargeting>true</EnableWindowsTargeting>
+		<!-- Always produce lock files locally -->
+		<RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
+
+		<!-- In CI, fail if someone forgot to update locks -->
+		<RestoreLockedMode>$(ContinuousIntegrationBuild)</RestoreLockedMode>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<!-- Optional: Remove if unused
+    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
+    -->
+	</ItemGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="..\RomInstaller.Core\RomInstaller.Core.csproj" />
+	</ItemGroup>
+
+</Project>

@@ -1,0 +1,54 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.11.35327.3
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "RomInstaller.Core", "RomInstaller.Core\RomInstaller.Core.csproj", "{4BFD3119-ED03-4D42-A909-244B5C8BC8D5}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "RomInstaller.CLI", "RomInstaller.CLI\RomInstaller.CLI.csproj", "{9EBB76BD-E696-4E9E-89C5-0CCBC531661F}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "RomInstaller.Launcher", "RomInstaller.Launcher\RomInstaller.Launcher.csproj", "{C3D8A749-53D6-41AC-854D-7966D3BC065E}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RomInstaller.UI", "RomInstaller.UI\RomInstaller.UI.csproj", "{C079E2CD-9F15-4E1C-8830-DAD06925F46B}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{8EC462FD-D22E-90A8-E5CE-7E832BA40C5D}"
+	ProjectSection(SolutionItems) = preProject
+		.gitignore = .gitignore
+		.snapshot-include.txt = .snapshot-include.txt
+		Directory.Build.props = Directory.Build.props
+		.github\workflows\dotnet-build-release.yml = .github\workflows\dotnet-build-release.yml
+		LICENSE = LICENSE
+		.github\workflows\publish-snapshot.yml = .github\workflows\publish-snapshot.yml
+		README.md = README.md
+	EndProjectSection
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{4BFD3119-ED03-4D42-A909-244B5C8BC8D5}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{4BFD3119-ED03-4D42-A909-244B5C8BC8D5}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{4BFD3119-ED03-4D42-A909-244B5C8BC8D5}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{4BFD3119-ED03-4D42-A909-244B5C8BC8D5}.Release|Any CPU.Build.0 = Release|Any CPU
+		{9EBB76BD-E696-4E9E-89C5-0CCBC531661F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9EBB76BD-E696-4E9E-89C5-0CCBC531661F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9EBB76BD-E696-4E9E-89C5-0CCBC531661F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9EBB76BD-E696-4E9E-89C5-0CCBC531661F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C3D8A749-53D6-41AC-854D-7966D3BC065E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C3D8A749-53D6-41AC-854D-7966D3BC065E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C3D8A749-53D6-41AC-854D-7966D3BC065E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C3D8A749-53D6-41AC-854D-7966D3BC065E}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C079E2CD-9F15-4E1C-8830-DAD06925F46B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C079E2CD-9F15-4E1C-8830-DAD06925F46B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C079E2CD-9F15-4E1C-8830-DAD06925F46B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C079E2CD-9F15-4E1C-8830-DAD06925F46B}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {59E142F7-645C-4061-9061-013DCE1B291A}
+	EndGlobalSection
+EndGlobal

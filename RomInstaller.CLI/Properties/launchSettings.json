@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "RomInstaller.CLI": {
+      "commandName": "Project",
+      "commandLineArgs": "register-shortcut-verb"
+    }
+  }
+}

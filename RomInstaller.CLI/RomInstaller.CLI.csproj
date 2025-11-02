@@ -1,0 +1,60 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+	<RuntimeIdentifiers>win-x64</RuntimeIdentifiers>
+	<LangVersion>latest</LangVersion>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+
+	<!-- Always produce lock files locally -->
+	<RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
+	  
+	<!-- Improves reproducibility/source info in CI -->
+	<ContinuousIntegrationBuild>true</ContinuousIntegrationBuild>
+	<Deterministic>true</Deterministic>
+	<DebugType>portable</DebugType>
+
+	<!-- This is overridden in CI via -p:Version=... -->
+	<Version>0.0.0-dev</Version>
+
+	  <!-- In CI, fail if someone forgot to update locks -->
+	  <RestoreLockedMode>$(ContinuousIntegrationBuild)</RestoreLockedMode>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Remove="seed\emulators.json" />
+    <None Remove="seed\filetypes.json" />
+    <None Remove="seed\settings.json" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="seed\emulators.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="seed\filetypes.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="seed\settings.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\RomInstaller.Core\RomInstaller.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="seed\manifest.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="seed\README.txt">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="seed\version.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
+</Project>
