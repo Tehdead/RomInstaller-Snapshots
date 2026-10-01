@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.IO;
 using System.Linq;
 using RomInstaller.Core.Models;
@@ -6,94 +6,112 @@ using RomInstaller.Core.Models;
 namespace RomInstaller.Core.Services;
 
 /// <summary>
-/// Removes a manifest entry and (optionally) deletes its ROM file or entire game folder.
-/// Uses FileDeleteService to choose Recycle Bin vs permanent behavior.
+/// Authoritative uninstall flow. Requested game deletion must succeed before
+/// shortcuts or the manifest entry are removed. Shortcut deletion is best-effort.
 /// </summary>
 public sealed class Uninstaller
 {
     public enum DeleteTarget
     {
-        None,       // Keep files; just remove manifest entry (and optionally shortcut)
-        RomFile,    // Delete only the primary ROM file
-        GameFolder  // Delete the whole installed game folder (recursive)
+        None,
+        RomFile,
+        GameFolder,
+        Auto // Prefer an existing game folder, otherwise delete the primary ROM.
+    }
+
+    internal delegate bool DeleteOperation(string path, FileDeleteService.DeletionMode mode, out string? error);
+    private readonly string manifestPath;
+    private readonly DeleteOperation deleteFile;
+    private readonly DeleteOperation deleteDirectory;
+
+    public Uninstaller() : this(CorePaths.ManifestPath, FileDeleteService.TryDeleteFile,
+                               FileDeleteService.TryDeleteDirectory) { }
+
+    internal Uninstaller(string manifestPath, DeleteOperation deleteFile, DeleteOperation deleteDirectory)
+    {
+        this.manifestPath = manifestPath;
+        this.deleteFile = deleteFile;
+        this.deleteDirectory = deleteDirectory;
     }
 
     /// <summary>
-    /// Uninstall by manifest id.
-    /// - deleteTarget: what to delete (none/rom/folder)
-    /// - mode: RecycleBin (default) or Permanent
-    /// - keepShortcut: true to keep .lnk; false to remove if present
-    ///
-    /// Returns a human-friendly summary string.
-    /// Throws RomInstallerException on expected/usage errors.
+    /// Uninstall by manifest id. Throws RomInstallerException on expected errors,
+    /// including failed game-file deletion; the manifest is retained for retry.
+    /// shortcutOnly keeps both game files and the manifest entry.
     /// </summary>
     public string UninstallByKey(string manifestId, DeleteTarget deleteTarget,
-                                 FileDeleteService.DeletionMode mode,
-                                 bool keepShortcut)
+                                 FileDeleteService.DeletionMode mode, bool keepShortcut,
+                                 bool shortcutOnly = false, string? shortcutPath = null)
     {
         if (string.IsNullOrWhiteSpace(manifestId))
             throw new RomInstallerException("Missing manifest id.");
 
-        var manifest = Json.Load<Manifest>(CorePaths.ManifestPath) ?? new Manifest();
+        var manifest = Json.Load<Manifest>(manifestPath) ?? new Manifest();
         var list = manifest.Games ?? [];
-        var game = list.FirstOrDefault(g => g.Id == manifestId);
+        var game = list.FirstOrDefault(g => string.Equals(g.Id, manifestId, StringComparison.OrdinalIgnoreCase));
         if (game is null)
             throw new RomInstallerException($"Game not found: {manifestId}");
 
-        // 1) Delete files as requested
+        if (shortcutOnly) deleteTarget = DeleteTarget.None;
+        if (deleteTarget == DeleteTarget.Auto)
+        {
+            deleteTarget = !string.IsNullOrWhiteSpace(game.GameFolder) && Directory.Exists(game.GameFolder)
+                ? DeleteTarget.GameFolder
+                : !string.IsNullOrWhiteSpace(game.RomPath) ? DeleteTarget.RomFile : DeleteTarget.None;
+        }
+
         string? deleteErr = null;
-        bool deleted = false;
-
-        if (deleteTarget == DeleteTarget.RomFile && !string.IsNullOrWhiteSpace(game.RomPath))
+        bool deleted = deleteTarget switch
         {
-            deleted = FileDeleteService.TryDeleteFile(game.RomPath, mode, out deleteErr);
+            DeleteTarget.None => true,
+            DeleteTarget.RomFile => deleteFile(game.RomPath, mode, out deleteErr),
+            DeleteTarget.GameFolder => deleteDirectory(game.GameFolder, mode, out deleteErr),
+            _ => throw new RomInstallerException("Invalid uninstall deletion target.")
+        };
+        if (!deleted)
+        {
+            var message = $"Uninstall failed: {deleteErr ?? "Game-file deletion failed."} Manifest entry retained; retry uninstall after resolving the deletion error.";
+            Logger.Warn(message);
+            throw new RomInstallerException(message);
         }
-        else if (deleteTarget == DeleteTarget.GameFolder && !string.IsNullOrWhiteSpace(game.GameFolder))
-        {
-            deleted = FileDeleteService.TryDeleteDirectory(game.GameFolder, mode, out deleteErr);
-        }
 
-        if (!string.IsNullOrEmpty(deleteErr))
-            Logger.Warn($"Uninstall: file deletion error: {deleteErr}");
-
-        // 2) Optionally remove shortcut
-        if (!keepShortcut && !string.IsNullOrWhiteSpace(game.ShortcutPath))
+        if (deleteTarget == DeleteTarget.RomFile)
         {
+            // Preserve the CLI's best-effort cleanup of an empty ROM parent.
+            var parent = Path.GetDirectoryName(game.RomPath);
             try
             {
-                if (File.Exists(game.ShortcutPath))
-                {
-                    // Use recycle vs permanent consistent with mode
-                    if (mode == FileDeleteService.DeletionMode.RecycleBin)
-                        Microsoft.VisualBasic.FileIO.FileSystem.DeleteFile(
-                            game.ShortcutPath,
-                            Microsoft.VisualBasic.FileIO.UIOption.OnlyErrorDialogs,
-                            Microsoft.VisualBasic.FileIO.RecycleOption.SendToRecycleBin);
-                    else
-                        File.Delete(game.ShortcutPath);
-                }
+                if (!string.IsNullOrWhiteSpace(parent) && Directory.Exists(parent)
+                    && !Directory.EnumerateFileSystemEntries(parent).Any())
+                    deleteDirectory(parent, mode, out _);
             }
-            catch (Exception ex)
+            catch (Exception ex) { Logger.Exception("Uninstall.EmptyParent", ex); }
+        }
+
+        if (!keepShortcut)
+        {
+            foreach (var path in new[] { shortcutPath, game.ShortcutPath }
+                         .Where(p => !string.IsNullOrWhiteSpace(p)).Distinct(StringComparer.OrdinalIgnoreCase))
             {
-                Logger.Exception("Uninstall.DeleteShortcut", ex);
-                // Non-fatal
+                if (File.Exists(path) && !deleteFile(path!, mode, out var error))
+                    Logger.Warn($"Uninstall: shortcut deletion error: {error}");
             }
         }
 
-        // 3) Remove manifest entry
-        var updated = list.Where(g => g.Id != manifestId).ToList();
-        Json.Save(CorePaths.ManifestPath, manifest with { Games = updated });
+        if (shortcutOnly) return "Shortcut removed.";
 
-        // 4) Human-friendly summary
+        Json.Save(manifestPath, manifest with
+        {
+            Games = list.Where(g => !string.Equals(g.Id, game.Id, StringComparison.OrdinalIgnoreCase)).ToList()
+        });
+
         var what = deleteTarget switch
         {
             DeleteTarget.None => "kept files",
-            DeleteTarget.RomFile => deleted ? "ROM sent to " + (mode == FileDeleteService.DeletionMode.RecycleBin ? "Recycle Bin" : "trash") : "ROM kept",
-            DeleteTarget.GameFolder => deleted ? "game folder sent to " + (mode == FileDeleteService.DeletionMode.RecycleBin ? "Recycle Bin" : "trash") : "game folder kept",
-            _ => "done"
+            DeleteTarget.RomFile => mode == FileDeleteService.DeletionMode.RecycleBin ? "ROM sent to Recycle Bin" : "ROM permanently deleted",
+            _ => mode == FileDeleteService.DeletionMode.RecycleBin ? "game folder sent to Recycle Bin" : "game folder permanently deleted"
         };
-
-        var shortcutNote = keepShortcut ? " (shortcut kept)" : " (shortcut removed if present)";
-        return $"Uninstalled '{game.Title}' — {what}{shortcutNote}.";
+        return $"Uninstalled '{game.Title}' — {what}" +
+               (keepShortcut ? " (shortcut kept)." : " (shortcut removal attempted).");
     }
 }
