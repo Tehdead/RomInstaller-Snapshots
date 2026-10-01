@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+  <!-- Compile the actual uninstall sources without the unrelated Windows COM
+       shortcut-creation dependency. This runner needs no NuGet test packages. -->
+  <ItemGroup>
+    <Compile Include="../RomInstaller.Core/Services/Uninstaller.cs" Link="Core/Uninstaller.cs" />
+    <Compile Include="../RomInstaller.Core/Services/FileDeleteService.cs" Link="Core/FileDeleteService.cs" />
+    <Compile Include="../RomInstaller.Core/Services/Json.cs" Link="Core/Json.cs" />
+    <Compile Include="../RomInstaller.Core/Services/Logger.cs" Link="Core/Logger.cs" />
+    <Compile Include="../RomInstaller.Core/Services/CorePaths.cs" Link="Core/CorePaths.cs" />
+    <Compile Include="../RomInstaller.Core/Errors.cs" Link="Core/Errors.cs" />
+    <Compile Include="../RomInstaller.Core/Models/Manifest.cs" Link="Core/Manifest.cs" />
+  </ItemGroup>
+</Project>

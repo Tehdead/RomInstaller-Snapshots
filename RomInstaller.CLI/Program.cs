@@ -358,13 +358,6 @@ static void DoUninstall(IEnumerable<string> rest)
     var keepFiles = args.Any(a => a.Equals("--keep-files", StringComparison.OrdinalIgnoreCase));
     var shortcutOnly = args.Any(a => a.Equals("--remove-shortcut-only", StringComparison.OrdinalIgnoreCase));
 
-    if (shortcutOnly && (keepFiles || permanent))
-    {
-        // shortcut-only ignores file deletion flags
-        // (we still honor --permanent vs recycle when deleting the .lnk itself)
-        keepFiles = true; // ensures we won't touch game files/manifest
-    }
-
     // Resolve key from shortcut if needed
     if (string.IsNullOrWhiteSpace(key) && !string.IsNullOrWhiteSpace(shortcutPath))
     {
@@ -387,47 +380,14 @@ static void DoUninstall(IEnumerable<string> rest)
     if (entry is null)
         Fail(ExitCodes.NotFound, $"Manifest entry not found for id: {key}");
 
-    // Delete assets unless keepFiles || shortcutOnly
-    if (!keepFiles && !shortcutOnly)
-    {
-        // Prefer removing the entire GameFolder (cleaner), else just the ROM file
-        if (!string.IsNullOrWhiteSpace(entry.GameFolder) && Directory.Exists(entry.GameFolder))
-        {
-            DeletionService.DeleteDirectory(entry.GameFolder, permanent);
-        }
-        else if (!string.IsNullOrWhiteSpace(entry.RomPath) && File.Exists(entry.RomPath))
-        {
-            DeletionService.DeleteFile(entry.RomPath, permanent);
-            // Try to remove empty parent
-            TryDeleteDirIfEmpty(Path.GetDirectoryName(entry.RomPath));
-        }
-    }
+    // Core owns deletion ordering and manifest cleanup. A deletion failure throws
+    // before either cleanup or the success message, yielding a nonzero CLI exit.
+    new Uninstaller().UninstallByKey(entry.Id,
+        keepFiles ? Uninstaller.DeleteTarget.None : Uninstaller.DeleteTarget.Auto,
+        permanent ? FileDeleteService.DeletionMode.Permanent : FileDeleteService.DeletionMode.RecycleBin,
+        keepShortcut: false, shortcutOnly: shortcutOnly, shortcutPath: shortcutPath);
 
-    // Remove shortcut: either from manifest path or provided --shortcut
-    // (We always attempt to remove the discovered shortcut unless user requested shortcutOnly=false and keepFiles=true? No, still safe.)
-    var shortcutCandidates = new List<string>();
-    if (!string.IsNullOrWhiteSpace(shortcutPath)) shortcutCandidates.Add(shortcutPath!);
-    if (!string.IsNullOrWhiteSpace(entry.ShortcutPath)) shortcutCandidates.Add(entry.ShortcutPath!);
-
-    foreach (var lnk in shortcutCandidates.Where(p => !string.IsNullOrWhiteSpace(p)))
-    {
-        if (File.Exists(lnk))
-            DeletionService.DeleteFile(lnk, permanent);
-    }
-
-    // Update manifest unless shortcutOnly set
-    if (!shortcutOnly)
-    {
-        manifest = manifest with
-        {
-            Games = manifest.Games.Where(g => !string.Equals(g.Id, entry.Id, StringComparison.OrdinalIgnoreCase)).ToList()
-        };
-        Json.Save(CorePaths.ManifestPath, manifest);
-    }
-
-    Console.WriteLine(shortcutOnly
-        ? "Shortcut removed."
-        : "Uninstall completed.");
+    Console.WriteLine(shortcutOnly ? "Shortcut removed." : "Uninstall completed.");
     Environment.Exit((int)ExitCodes.Ok);
 
     // --- local helper ---
@@ -1254,21 +1214,6 @@ static bool TryLaunchResolveUi(string sourcePath, string? consoleOverride, strin
     }
 }
 
-/// <summary>Delete a directory if it exists and is empty. Best-effort (logs only).</summary>
-static void TryDeleteDirIfEmpty(string? dir)
-{
-    try
-    {
-        if (string.IsNullOrWhiteSpace(dir)) return;
-        if (!Directory.Exists(dir)) return;
-        if (Directory.EnumerateFileSystemEntries(dir).Any()) return;
-        Directory.Delete(dir, false);
-    }
-    catch (Exception ex)
-    {
-        Logger.Exception("TryDeleteDirIfEmpty", ex);
-    }
-}
 
 
 #endregion
